@@ -1,4 +1,4 @@
-package com.litehtml
+package com.ollie.litehtml
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -14,6 +14,6 @@ class LitehtmlViewPackage : ReactPackage {
   }
 
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-    return emptyList()
+    return mutableListOf(LitehtmlModule(reactContext))
   }
 }

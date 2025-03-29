@@ -1,8 +1,9 @@
 {
   "name": "react-native-litehtml",
-  "version": "0.1.0",
-  "description": "A fast simple html renderer.",
+  "version": "0.2.11",
+  "description": "litehtml for react native implemention",
   "source": "./src/index.tsx",
+  "react-native": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "exports": {
@@ -15,8 +16,7 @@
         "types": "./lib/typescript/commonjs/src/index.d.ts",
         "default": "./lib/commonjs/index.js"
       }
-    },
-    "./package.json": "./package.json"
+    }
   },
   "files": [
     "src",
@@ -24,6 +24,8 @@
     "android",
     "ios",
     "cpp",
+    "!cpp/litehtml/containers",
+    "!cpp/litehtml/doc",
     "*.podspec",
     "react-native.config.js",
     "!ios/build",
@@ -154,7 +156,8 @@
     "singleQuote": true,
     "tabWidth": 2,
     "trailingComma": "es5",
-    "useTabs": false
+    "useTabs": false,
+    "printWidth": 120
   },
   "react-native-builder-bob": {
     "source": "src",
@@ -190,12 +193,7 @@
       "android": "android/generated"
     },
     "android": {
-      "javaPackageName": "com.litehtml"
-    },
-    "ios": {
-      "componentProvider": {
-        "LitehtmlView": "LitehtmlView"
-      }
+      "javaPackageName": "com.ollie.litehtml"
     },
     "includesGeneratedCode": true
   },

@@ -1,25 +1,32 @@
 buildscript {
-  ext.getExtOrDefault = {name ->
+  ext.getExtOrDefault = { name ->
     return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties['Litehtml_' + name]
   }
 
   repositories {
     google()
     mavenCentral()
+    maven { url 'https://jitpack.io' }
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:8.7.2"
+    classpath "com.android.tools.build:gradle:8.7.3"
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
 }
 
 
+def isNewArchitectureEnabled() {
+  return rootProject.hasProperty("newArchEnabled") && rootProject.getProperty("newArchEnabled") == "true"
+}
+
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
-apply plugin: "com.facebook.react"
+if (isNewArchitectureEnabled()) {
+  apply plugin: "com.facebook.react"
+}
 
 def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["Litehtml_" + name]).toInteger()
@@ -36,7 +43,7 @@ def supportsNamespace() {
 
 android {
   if (supportsNamespace()) {
-    namespace "com.litehtml"
+    namespace "com.ollie.litehtml"
 
     sourceSets {
       main {
@@ -50,6 +57,14 @@ android {
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+    buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
+  }
+
+  externalNativeBuild {
+    cmake {
+      path = "src/main/cpp/CMakeLists.txt"
+      version = "3.22.1"
+    }
   }
 
   buildFeatures {
@@ -73,10 +88,12 @@ android {
 
   sourceSets {
     main {
-      java.srcDirs += [
-        "generated/java",
-        "generated/jni"
-      ]
+      if (isNewArchitectureEnabled()) {
+        java.srcDirs += [
+          "generated/java",
+          "generated/jni"
+        ]
+      }
     }
   }
 }
@@ -91,10 +108,14 @@ def kotlin_version = getExtOrDefault("kotlinVersion")
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+  implementation 'androidx.compose.ui:ui-text-android:1.7.8'
+  implementation 'com.github.deckerst:androidsvg:cc9d59a88f'
 }
 
-react {
-  jsRootDir = file("../src/")
-  libraryName = "LitehtmlView"
-  codegenJavaPackageName = "com.litehtml"
+if (isNewArchitectureEnabled()) {
+  react {
+    jsRootDir = file("../src/")
+    libraryName = "LitehtmlView"
+    codegenJavaPackageName = "com.ollie.litehtml"
+  }
 }
