@@ -92,6 +92,12 @@ NativeLitehtml.registerFontFromAsset(["Microsoft YaHei"], 'fonts/YaHei.ttf');
 ...
 ```
 
+## ToDo
+
+- [ ] Migration to using pure JS + C++ + Skia rendering
+- [ ] Add other implementations of LiteHTML
+- [ ] iOS support
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
