@@ -1,0 +1,3 @@
+[submodule "cpp/litehtml"]
+	path = cpp/litehtml
+	url = https://github.com/litehtml/litehtml.git
