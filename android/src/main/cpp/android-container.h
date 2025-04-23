@@ -74,7 +74,7 @@ public:
 
     void del_clip() override;
 
-    void get_client_rect(litehtml::position &client) const override;
+    void get_viewport(litehtml::position &viewport) const override;
 
     litehtml::element::ptr create_element(const char *tag_name, const litehtml::string_map &attributes,
                                           const std::shared_ptr<litehtml::document> &doc) override;

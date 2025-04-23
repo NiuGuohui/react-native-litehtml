@@ -160,7 +160,10 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
         var x = rect.left
         text.forEach { c ->
           val dx = paint.measureText(c.toString())
-          canvas.drawCircle(x + dx / 2, baseline + emphasisSpace * 0.75f, max(paint.textSize * 0.1f, 0.2f), paint)
+          // Skip whitespace
+          if (!c.isWhitespace()) {
+            canvas.drawCircle(x + dx / 2, baseline + emphasisSpace * 0.75f, max(paint.textSize * 0.1f, 0.2f), paint)
+          }
           x += dx
         }
       }

@@ -1,10 +1,11 @@
 #ifndef LITEHTML_ANDROID_UTIL_H
 #define LITEHTML_ANDROID_UTIL_H
 
-#include <jni.h>
-#include <vector>
-#include <litehtml.h>
 #include <initializer_list>
+#include <jni.h>
+#include <litehtml.h>
+#include <litehtml/os_types.h>
+#include <vector>
 
 namespace {
 

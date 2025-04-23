@@ -300,7 +300,7 @@ void android_container::on_anchor_click(const char *url, const litehtml::element
     jniNativeCall->callAnchorClick(url, content.c_str());
 }
 
-void android_container::get_client_rect(litehtml::position &client) const {
+void android_container::get_viewport(litehtml::position &viewport) const {
 //    client.x = client.y = 0;
 //    client.width = 999;
 //    client.height = 9999;
