@@ -288,7 +288,9 @@ bool android_container::on_element_click(const litehtml::element::ptr &el) {
     if (el && string(el->get_tagName()) == "img" || string(el->get_tagName()) == "image") {
         auto sz = el->get_placement();
         jniNativeCall->callImageClick(el->get_attr("src", ""), sz.width, sz.height);
+        return true;
     }
+    return false;
 }
 
 /**

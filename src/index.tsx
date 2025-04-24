@@ -1,6 +1,6 @@
 import { default as NativeLitehtmlView, type NativeLitehtmlViewProps } from './LitehtmlViewNativeComponent';
 import { StyleSheet, type ViewProps } from 'react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 export { NativeLitehtml } from './NativeLitehtml';
 
 export interface LitehtmlViewProps extends ViewProps, Pick<NativeLitehtmlViewProps, 'onAnchorClick' | 'onImageClick'> {
@@ -25,9 +25,9 @@ export function LitehtmlView(props: LitehtmlViewProps) {
     <NativeLitehtmlView
       {...props}
       collapsable={false}
-      style={StyleSheet.compose({ width: '100%', height }, props.style)}
       onHtmlLayout={useCallback((e: any) => setHeight(e.nativeEvent.height), [])}
       content={useMemo(() => ({ html: props.html, css: props.css }), [props.html, props.css])}
+      style={StyleSheet.compose({ width: '100%', height: useDeferredValue(height, 0) }, props.style)}
     />
   );
 }
