@@ -2,11 +2,13 @@ package com.ollie.litehtml
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
+import android.graphics.RectF
 import android.util.Log
 import androidx.core.graphics.toRectF
 import androidx.core.graphics.withClip
@@ -28,6 +30,7 @@ import okhttp3.Callback
 import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 
@@ -41,10 +44,9 @@ class ImageManager(private val context: Context) {
       OkHttpClientProvider.createClient(context).newCall(request).enqueue(object : Callback {
         override fun onResponse(call: Call, response: Response) {
           if (response.isSuccessful) {
-            response.body?.byteStream()?.let {
+            response.body?.byteStream()?.also {
               try {
-                val svg = SVG.getFromInputStream(it)
-                cacheSvgs[url] = svg
+                cacheSvgs[url] = SVG.getFromInputStream(it)
               } catch (e: Exception) {
                 Log.e("ImageManager", "Error loading SVG: $url", e)
               } finally {
@@ -78,31 +80,34 @@ class ImageManager(private val context: Context) {
 
   fun getImageSize(url: String): IntArray {
     if (isSvgImage(url)) {
-      return cacheSvgs[url]?.documentViewBox?.let { intArrayOf(it.width().roundToInt(), it.height().roundToInt()) }
-        ?: intArrayOf()
+      return cacheSvgs[url]?.let { svg ->
+        intArrayOf(ceil(svg.documentWidth).roundToInt(), ceil(svg.documentHeight).toInt())
+      } ?: intArrayOf(0, 0)
     }
     return cache[url]?.get()?.let { intArrayOf(it.width, it.height) } ?: intArrayOf(0, 0)
   }
 
-  fun drawImage(canvas: Canvas, rect: Rect, url: String, borderRadius: FloatArray) {
+  fun drawImage(canvas: Canvas, rect: RectF, url: String, borderRadius: FloatArray) {
     if (isSvgImage(url)) {
-      cacheSvgs[url]?.let { svg ->
-        canvas.withClip(Path().apply {
-          if (borderRadius.max() > 0) addRoundRect(rect.toRectF(), borderRadius, Path.Direction.CW)
-          else addRect(rect.toRectF(), Path.Direction.CW)
-        }) {
-          val options = RenderOptions().preserveAspectRatio(PreserveAspectRatio.FULLSCREEN_START)
-          rect.toRectF().let { options.viewPort(it.left, it.top, it.width(), it.height()) }
-          svg.setDocumentWidth("100%")
-          svg.setDocumentHeight("100%")
-          svg.renderToCanvas(canvas, options)
+      val clip = Path().apply {
+        if (borderRadius.max() > 0) addRoundRect(rect, borderRadius, Path.Direction.CW)
+        else addRect(rect, Path.Direction.CW)
+      }
+      canvas.withClip(clip) {
+        cacheSvgs[url]?.let { svg ->
+          svg.documentWidth = rect.width()
+          svg.documentHeight = rect.height()
+          svg.renderToCanvas(
+            canvas, RenderOptions().preserveAspectRatio(PreserveAspectRatio.FULLSCREEN_START).also { options ->
+              options.viewPort(rect.left, rect.top, rect.width(), rect.height())
+            })
         }
       }
     } else {
       cache[url]?.get()?.let {
         if (it is CloseableBitmap) {
           if (borderRadius.max() > 0) {
-            canvas.withClip(Path().apply { addRoundRect(rect.toRectF(), borderRadius, Path.Direction.CW) }) {
+            canvas.withClip(Path().apply { addRoundRect(rect, borderRadius, Path.Direction.CW) }) {
               drawBitmap(it.underlyingBitmap, null, rect, Paint().apply {
                 strokeWidth = 0f
                 isAntiAlias = true

@@ -207,7 +207,7 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
    * Draw an image
    */
   fun drawImage(canvas: Canvas, rect: Rect, url: String, borderRadius: FloatArray) = transform(canvas) {
-    imageManager.drawImage(canvas, rect, url, borderRadius)
+    imageManager.drawImage(canvas, rect.toRectF(), url, borderRadius)
   }
 
   /**
