@@ -1,6 +1,6 @@
 {
   "name": "react-native-litehtml",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "description": "litehtml for react native implemention",
   "source": "./src/index.tsx",
   "react-native": "./src/index.tsx",
