@@ -14,7 +14,6 @@ namespace facebook::react {
         return rt.global().createFromHostObject(
                 rt,
                 std::make_shared<RNLitehtml::JSLitehtml>(
-                        rt,
                         new RNLitehtml::JSDocumentContainer(&rt, std::move(container)),
                         html.utf8(rt),
                         css.has_value() ? css->utf8(rt) : ""

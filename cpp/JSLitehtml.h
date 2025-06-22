@@ -10,8 +10,7 @@ namespace RNLitehtml {
 
     class JSLitehtml : public jsi::HostObject {
     public:
-        JSLitehtml(jsi::Runtime &runtime, JSDocumentContainer *container, const std::string& html,
-                   const std::string &css);
+        JSLitehtml(JSDocumentContainer *container, const std::string &html, const std::string &css);
 
         ~JSLitehtml() override;
 
@@ -22,7 +21,6 @@ namespace RNLitehtml {
         std::vector<jsi::PropNameID> getPropertyNames(jsi::Runtime &rt) override;
 
     private:
-        JSDocumentContainer *container;
         litehtml::document::ptr document;
     };
 }

@@ -1,6 +1,7 @@
 import Litehtml, { type LitehtmlInstance } from './NativeLitehtml';
 import { createWorkletRuntime, runOnRuntime } from 'react-native-reanimated';
-import type { FontDescription, FontMetrics } from './Font';
+import type { FontDescription, FontMetrics } from './types';
+import { Skia, type SkRect } from '@shopify/react-native-skia';
 
 const createInstance = Litehtml.createInstance;
 
@@ -16,12 +17,13 @@ setTimeout(() => {
 }, 1000);
 
 export function multiply(): number {
+  Skia.XYWHRect;
   return 2;
 }
 
 class DocumentContainer {
   __workletClass = true;
-  private fontId = 0;
+  private fontId = 1;
   createFont(descr: FontDescription): FontMetrics {
     return {
       id: this.fontId++,
@@ -37,4 +39,6 @@ class DocumentContainer {
       superShift: 12,
     };
   }
+
+  setClip(_rect: SkRect, _radius: number[]) {}
 }

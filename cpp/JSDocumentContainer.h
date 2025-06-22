@@ -7,10 +7,30 @@ using namespace facebook;
 
 namespace RNLitehtml {
 
-    class JSDocumentContainer : public litehtml::document_container {
+    class JSContainerWrapper {
+    private:
+        jsi::Runtime *rt;
+        jsi::Object jsLayer;
     public:
-        explicit JSDocumentContainer(jsi::Runtime *rt, jsi::Object _jsLayer) : jsLayer(std::move(_jsLayer)),
-                                                                               rt(rt) {}
+        JSContainerWrapper(jsi::Runtime *rt, jsi::Object _jsLayer) : rt(rt), jsLayer(std::move(_jsLayer)) {
+        };
+
+        std::shared_ptr<jsi::Function> getJSFunc(const char *name) const {
+            auto fn = this->jsLayer.getProperty(*rt, name);
+            if (fn.isObject() && fn.asObject(*rt).isFunction(*rt)) {
+                return std::make_shared<jsi::Function>(fn.asObject(*rt).asFunction(*rt));
+            }
+            return nullptr;
+        }
+    };
+
+    class JSDocumentContainer : public litehtml::document_container {
+    private:
+        jsi::Runtime *rt;
+        JSContainerWrapper wrapper;
+
+    public:
+        JSDocumentContainer(jsi::Runtime *rt, jsi::Object _jsLayer) : wrapper(rt, std::move(_jsLayer)), rt(rt) {}
 
         litehtml::uint_ptr
         create_font(const litehtml::font_description &descr, const litehtml::document *doc,
@@ -27,7 +47,7 @@ namespace RNLitehtml {
 
         [[nodiscard]] int get_default_font_size() const override;
 
-        [[nodiscard]] const char *get_default_font_name() const override;
+        const char *get_default_font_name() const override;
 
         void draw_list_marker(litehtml::uint_ptr hdc, const litehtml::list_marker &marker) override;
 
@@ -88,9 +108,5 @@ namespace RNLitehtml {
                         const std::function<void(const char *)> &on_space) override;
 
         void on_mouse_event(const litehtml::element::ptr &el, litehtml::mouse_event event) override;
-
-    private:
-        jsi::Runtime *rt;
-        jsi::Object jsLayer;
     };
 }
