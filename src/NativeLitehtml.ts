@@ -1,16 +1,14 @@
-import { type TurboModule, TurboModuleRegistry } from 'react-native';
+import type { TurboModule } from 'react-native';
+import { TurboModuleRegistry } from 'react-native';
+import type { UnsafeObject } from 'react-native/Libraries/Types/CodegenTypes';
 
-interface Spec extends TurboModule {
-  /**
-   * Register fonts in rendering engine.
-   * @param fontName font name
-   * @param fontPath font path
-   */
-  registerFont: (fontName: string[], fontPath: string) => void;
-  /**
-   * Register fonts in rendering engine from asset.
-   */
-  registerFontFromAsset: (fontName: string[], inAssetsPath: string) => void;
+export interface LitehtmlInstance {
+  render: (maxWidth: number, renderType: 'render_all' | 'render_fixed_only' | 'render_no_fixed') => void;
+  draw: (width: number, height: number) => void;
 }
 
-export const NativeLitehtml = TurboModuleRegistry.getEnforcing<Spec>('NativeLitehtml');
+interface Spec extends TurboModule {
+  createInstance: (html: string, css: string, container: UnsafeObject) => UnsafeObject;
+}
+
+export default TurboModuleRegistry.getEnforcing<Spec>('Litehtml');

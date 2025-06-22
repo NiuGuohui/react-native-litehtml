@@ -1,19 +1,21 @@
 package com.ollie.litehtml
 
-import com.facebook.react.ReactPackage
+import com.facebook.react.BaseReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.uimanager.ViewManager
-import java.util.ArrayList
+import com.facebook.react.module.model.ReactModuleInfo
+import com.facebook.react.module.model.ReactModuleInfoProvider
+import java.util.HashMap
 
-class LitehtmlViewPackage : ReactPackage {
-  override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-    val viewManagers: MutableList<ViewManager<*, *>> = ArrayList()
-    viewManagers.add(LitehtmlViewManager())
-    return viewManagers
+class LitehtmlPackage : BaseReactPackage() {
+  override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
+   return null
   }
 
-  override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-    return mutableListOf(LitehtmlModule(reactContext))
+  override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
+    return ReactModuleInfoProvider {
+      val moduleInfos: MutableMap<String, ReactModuleInfo> = HashMap()
+      moduleInfos
+    }
   }
 }

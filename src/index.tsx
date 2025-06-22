@@ -1,33 +1,40 @@
-import { default as NativeLitehtmlView, type NativeLitehtmlViewProps } from './LitehtmlViewNativeComponent';
-import { StyleSheet, type ViewProps } from 'react-native';
-import { useCallback, useMemo, useState } from 'react';
-export { NativeLitehtml } from './NativeLitehtml';
+import Litehtml, { type LitehtmlInstance } from './NativeLitehtml';
+import { createWorkletRuntime, runOnRuntime } from 'react-native-reanimated';
+import type { FontDescription, FontMetrics } from './Font';
 
-export interface LitehtmlViewProps extends ViewProps, Pick<NativeLitehtmlViewProps, 'onAnchorClick' | 'onImageClick'> {
-  /**
-   * html string
-   */
-  html: string;
-  /**
-   * css string
-   */
-  css?: string;
+const createInstance = Litehtml.createInstance;
+
+const runtime = createWorkletRuntime('NativeLitehtml');
+
+setTimeout(() => {
+  runOnRuntime(runtime, () => {
+    'worklet';
+    const i = createInstance(`<body><p>Niu<u>Guohui</u></p></body>`, '', new DocumentContainer()) as LitehtmlInstance;
+    i.render(1000, 'render_all');
+    console.log(i);
+  })();
+}, 1000);
+
+export function multiply(): number {
+  return 2;
 }
 
-/**
- * Render HTML by litehtml.
- * It will be auto height and full width if you don't set width/height style.
- */
-export function LitehtmlView(props: LitehtmlViewProps) {
-  const [height, setHeight] = useState(0);
-
-  return (
-    <NativeLitehtmlView
-      {...props}
-      collapsable={false}
-      style={StyleSheet.compose({ width: '100%', height }, props.style)}
-      onHtmlLayout={useCallback((e: any) => setHeight(e.nativeEvent.height), [])}
-      content={useMemo(() => ({ html: props.html, css: props.css }), [props.html, props.css])}
-    />
-  );
+class DocumentContainer {
+  __workletClass = true;
+  private fontId = 0;
+  createFont(descr: FontDescription): FontMetrics {
+    return {
+      id: this.fontId++,
+      fontSize: descr.fontSize,
+      height: 12,
+      // height: it.ascent.absoluteValue + it.descent.absoluteValue + it.leading + emphasisSpace,
+      ascent: 12,
+      descent: 12,
+      xHeight: 12,
+      chWidth: 12,
+      drawSpaces: true,
+      subShift: 12,
+      superShift: 12,
+    };
+  }
 }
