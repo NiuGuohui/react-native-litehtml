@@ -3,13 +3,14 @@ package com.ollie.litehtml
 import android.graphics.Paint
 
 data class FontInfo(
-  val size: Int,
+  val size: Float,
   val weight: Int,
   val italic: Boolean,
   val decorationLine: Int,
   val decorationStyle: Int,
   val decorationColor: String,
   val emphasis: String?,
+  val emphasisColor: String,
 ) {
   val paint = Paint()
 

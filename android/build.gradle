@@ -1,19 +1,30 @@
+import java.nio.file.Paths
+
 buildscript {
-  ext.getExtOrDefault = { name ->
+  ext.getExtOrDefault = {name ->
     return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties['Litehtml_' + name]
   }
 
   repositories {
     google()
     mavenCentral()
-    maven { url 'https://jitpack.io' }
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:8.7.3"
+    classpath "com.android.tools.build:gradle:8.7.2"
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
+}
+
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+apply plugin: "com.facebook.react"
+
+def getExtOrIntegerDefault(name) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["Litehtml_" + name]).toInteger()
 }
 
 def reactNativeArchitectures() {
@@ -21,61 +32,51 @@ def reactNativeArchitectures() {
   return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
 }
 
-def isNewArchitectureEnabled() {
-  return rootProject.hasProperty("newArchEnabled") && rootProject.getProperty("newArchEnabled") == "true"
-}
-
-apply plugin: "com.android.library"
-apply plugin: "kotlin-android"
-
-if (isNewArchitectureEnabled()) {
-  apply plugin: "com.facebook.react"
-}
-
-def getExtOrIntegerDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["Litehtml_" + name]).toInteger()
-}
-
-def supportsNamespace() {
-  def parsed = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')
-  def major = parsed[0].toInteger()
-  def minor = parsed[1].toInteger()
-
-  // Namespace support was added in 7.3.0
-  return (major == 7 && minor >= 3) || major >= 8
+static def findNodeModules(baseDir) {
+  def basePath = baseDir.toPath().normalize()
+  // Node's module resolution algorithm searches up to the root directory,
+  // after which the base path will be null
+  while (basePath) {
+    def nodeModulesPath = Paths.get(basePath.toString(), "node_modules")
+    def reactNativePath = Paths.get(nodeModulesPath.toString(), "react-native")
+    if (nodeModulesPath.toFile().exists() && reactNativePath.toFile().exists()) {
+      return nodeModulesPath.toString()
+    }
+    basePath = basePath.getParent()
+  }
+  throw new GradleException("react-native-fast-opencv: Failed to find node_modules/ path!")
 }
 
 android {
-  if (supportsNamespace()) {
-    namespace "com.ollie.litehtml"
-
-    sourceSets {
-      main {
-        manifest.srcFile "src/main/AndroidManifestNew.xml"
-      }
-    }
-  }
+  namespace "com.ollie.litehtml"
 
   compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
 
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
-    buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
 
     ndk {
       abiFilters(*reactNativeArchitectures())
+    }
+
+    externalNativeBuild {
+      cmake {
+        arguments "-DANDROID_STL=c++_shared",
+            "-DNODE_MODULES_DIR=${findNodeModules(projectDir)}"
+      }
     }
   }
 
   externalNativeBuild {
     cmake {
-      path = "src/main/cpp/CMakeLists.txt"
+      path = "src/main/jni/CMakeLists.txt"
       version = "3.22.1"
     }
   }
 
   buildFeatures {
+    prefab true
     buildConfig true
   }
 
@@ -96,12 +97,10 @@ android {
 
   sourceSets {
     main {
-      if (isNewArchitectureEnabled()) {
-        java.srcDirs += [
-          "generated/java",
-          "generated/jni"
-        ]
-      }
+      java.srcDirs += [
+        "generated/java",
+        "generated/jni"
+      ]
     }
   }
 }
@@ -116,14 +115,5 @@ def kotlin_version = getExtOrDefault("kotlinVersion")
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-  implementation 'androidx.compose.ui:ui-text-android:1.7.8'
-  implementation 'com.github.deckerst:androidsvg:cc9d59a88f'
-}
-
-if (isNewArchitectureEnabled()) {
-  react {
-    jsRootDir = file("../src/")
-    libraryName = "LitehtmlView"
-    codegenJavaPackageName = "com.ollie.litehtml"
-  }
+  implementation 'com.caverock:androidsvg-aar:1.4'
 }

@@ -70,8 +70,8 @@ namespace {
      * Convert to parsable color values for JAVA layer
      */
     jstring createJColorString(JNIEnv *env, litehtml::web_color color) {
-        char argb[9];
-        t_snprintf(argb, 9, "%02X%02X%02X%02X", color.alpha, color.red, color.green, color.blue);
+        char argb[10];
+        t_snprintf(argb, 10, "#%02X%02X%02X%02X", color.alpha, color.red, color.green, color.blue);
         return env->NewStringUTF(argb);
     }
 

@@ -155,14 +155,14 @@ object BorderUtil {
     }
     // Left border
     if (borderWidths[0] > 0) {
-      paint.color = "#${borderColors[0]}".toColorInt()
+      paint.color = borderColors[0].toColorInt()
       canvas.withClip(Path(path).apply { op(Path(p1).apply { op(p2, Path.Op.INTERSECT) }, Path.Op.INTERSECT) }) {
         fillBorder(this, borderStyles[0], outer, inner, borderWidths[0], Paint(paint))
       }
     }
     // Top border
     if (borderWidths[1] > 0) {
-      paint.color = "#${borderColors[1]}".toColorInt()
+      paint.color = borderColors[1].toColorInt()
       canvas.withClip(Path(path).apply {
         op(p1, Path.Op.DIFFERENCE)
         op(p3, Path.Op.DIFFERENCE)
@@ -176,14 +176,14 @@ object BorderUtil {
     }
     // Right border
     if (borderWidths[2] > 0) {
-      paint.color = "#${borderColors[2]}".toColorInt()
+      paint.color = borderColors[2].toColorInt()
       canvas.withClip(Path(path).apply { op(Path(p3).apply { op(p4, Path.Op.INTERSECT) }, Path.Op.INTERSECT) }) {
         fillBorder(this, borderStyles[2], outer, inner, borderWidths[2], Paint(paint))
       }
     }
     // Bottom border
     if (borderWidths[3] > 0) {
-      paint.color = "#${borderColors[3]}".toColorInt()
+      paint.color = borderColors[3].toColorInt()
       canvas.withClip(Path(path).apply {
         op(p4, Path.Op.DIFFERENCE)
         op(p2, Path.Op.DIFFERENCE)

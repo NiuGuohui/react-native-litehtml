@@ -8,7 +8,7 @@ class LitehtmlModule(context: ReactApplicationContext) : NativeLitehtmlSpec(cont
   override fun registerFont(fontName: ReadableArray, fontPath: String) {
     val value = lazy { Typeface.createFromFile(fontPath.replace("file://", "")) }
     for (i in 0 until fontName.size()) {
-      fontName.getString(i)?.let { LiteHtmlNativeCall.fontRegistry[it] = value }
+      fontName.getString(i)?.let { LitehtmlRenderer.fontRegistry[it] = value }
     }
   }
 
@@ -16,12 +16,12 @@ class LitehtmlModule(context: ReactApplicationContext) : NativeLitehtmlSpec(cont
     val assets = reactApplicationContext.assets
     val value = lazy { Typeface.createFromAsset(assets, inAssetsPath) }
     for (i in 0 until fontName.size()) {
-      fontName.getString(i)?.let { LiteHtmlNativeCall.fontRegistry[it] = value }
+      fontName.getString(i)?.let { LitehtmlRenderer.fontRegistry[it] = value }
     }
   }
 
   override fun invalidate() {
     super.invalidate()
-    LiteHtmlNativeCall.fontRegistry.clear()
+    LitehtmlRenderer.fontRegistry.clear()
   }
 }

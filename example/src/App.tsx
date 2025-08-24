@@ -1,7 +1,9 @@
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { LitehtmlView } from 'react-native-litehtml';
 
-const richText = `<p style="text-align: start">
+const richText = `
+  <div style="width: 100px;height: 100px;background-color: green"></div>
+  <p style="text-align: start">
     <span style="font-size: 24px; text-decoration: line-through">This is <u>test</u>.</span>
   </p>
   <a href="https://google.com">Google</a>
@@ -9,6 +11,7 @@ const richText = `<p style="text-align: start">
     <p style="text-align: left">Bold text:</p>
     <p style="text-align: left">
       <strong>Example text for bold formatting.</strong>
+      <img src="https://s.100tifen.com/media/eqn/54/8/q15408_9zyfepe4v4.svg" style="height: 40px;width: 100px;" />
     </p>
     <p style="text-align: left">Italic text:</p>
     <p style="text-align: left">
@@ -164,6 +167,9 @@ const style = css`
     line-height: 1.5;
     font-size: 16px;
   }
+  a:active {
+    background-color: #f00;
+  }
   table {
     margin: 10px 0;
     border-collapse: collapse;
@@ -192,17 +198,26 @@ const style = css`
 export default function App() {
   return (
     <View style={styles.container}>
+      <View style={{ height: StatusBar.currentHeight }} />
       <ScrollView style={styles.container}>
-        <LitehtmlView
-          css={style}
-          html={richText}
-          onImageClick={(e) => {
-            console.log(e.nativeEvent);
-          }}
-          onAnchorClick={(e) => {
-            console.log(e.nativeEvent);
-          }}
-        />
+        <View style={{ borderRadius: 100, overflow: 'hidden', borderWidth: 2, borderColor: '#F00' }}>
+          <LitehtmlView
+            css={style}
+            html={richText}
+            style={{ height: 3000 }}
+            onLoadSVG={(src) => {
+              console.log(src);
+              return fetch(src).then((res) => res.text());
+            }}
+            onContentLayout={(width, height) => {}}
+            onImageClick={(e) => {
+              console.log(e.nativeEvent);
+            }}
+            onAnchorClick={(e) => {
+              console.log(e.nativeEvent);
+            }}
+          />
+        </View>
       </ScrollView>
     </View>
   );

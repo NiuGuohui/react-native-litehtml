@@ -1,52 +1,75 @@
 package com.ollie.litehtml
 
 import android.content.Context
-import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.PorterDuff
+import android.graphics.SurfaceTexture
 import android.view.MotionEvent
-import android.view.View
+import android.view.TextureView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 
-class LitehtmlView(context: Context) : View(context) {
+class LitehtmlView(context: Context) : TextureView(context), TextureView.SurfaceTextureListener {
   private var document: Long? = null
+  private val scope = CoroutineScope(Dispatchers.Main)
   private val density = context.resources.displayMetrics.density
-  private var listener: ((width: Int, height: Int) -> Unit)? = null
-  private val nativeCall = LiteHtmlNativeCall(context) {
-    post { requestLayout() }
-    onSizeChanged(width, height, width, height)
+
+  var layoutListener: ((width: Float, height: Float) -> Unit)? = null
+
+  val imageManager = ImageManager { layoutDocument() }
+  val renderer = LitehtmlRenderer(imageManager).apply {
+    renderListener = { renderDocument() }
   }
 
-  var imageClickListener: ((src: String, width: Int, height: Int) -> Unit)? = null
-    set(value) {
-      field = value
-      nativeCall.imageClickListener = value
+  private fun transform(size: Int) = size / density
+
+  private fun layoutDocument() {
+    scope.launch {
+      synchronized(this) {
+        document?.let {
+          val size = renderer.layoutDocument(it, transform(width))
+          layoutListener?.invoke(size[0], size[1])
+          renderDocument()
+        }
+      }
     }
-  var anchorClickListener: ((href: String, content: String?) -> Unit)? = null
-    set(value) {
-      field = value
-      nativeCall.anchorClickListener = value
+  }
+
+  private fun renderDocument() {
+    scope.launch {
+      synchronized(this) {
+        lockCanvas()?.let { canvas ->
+          canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+          canvas.scale(density, density)
+          if (document != null) {
+            renderer.renderDocument(document!!, canvas, transform(width), transform(height))
+          }
+          unlockCanvasAndPost(canvas)
+        }
+      }
     }
+  }
+
+  init {
+    isOpaque = false
+    surfaceTextureListener = this
+  }
 
   fun setHTML(html: String, css: String = "") {
-    if (document != null) deleteDocument(document!!)
-    document = createDocument(nativeCall, html, css)
-    onSizeChanged(width, height, width, height)
-  }
-
-  fun setOnLayoutListener(listener: (width: Int, height: Int) -> Unit) {
-    this.listener = listener
+    if (document != null) renderer.deleteDocument(document!!)
+    document = renderer.createDocument(html, css)
+    layoutDocument()
   }
 
   fun destroy() {
-    nativeCall.release()
-    scope.launch {
-      synchronized(this) {
-        document?.let { deleteDocument(it) }
-        document = null
-        listener = null
-      }
+    renderer.release()
+    imageManager.release()
+    synchronized(this) {
+      document?.let { renderer.deleteDocument(it) }
+      document = null
+      layoutListener = null
     }
   }
 
@@ -55,41 +78,13 @@ class LitehtmlView(context: Context) : View(context) {
       val tx = transform(event.x.toInt())
       val ty = transform(event.y.toInt())
       when (event.action) {
-        MotionEvent.ACTION_DOWN -> touchDocument(it, 1, tx, ty)
-        MotionEvent.ACTION_UP -> touchDocument(it, 2, tx, ty)
-        MotionEvent.ACTION_CANCEL -> touchDocument(it, 3, tx, ty)
+        MotionEvent.ACTION_DOWN -> renderer.touchDocument(it, 1, tx, ty)
+        MotionEvent.ACTION_UP -> renderer.touchDocument(it, 2, tx, ty)
+        MotionEvent.ACTION_CANCEL -> renderer.touchDocument(it, 3, tx, ty)
       }
-      postInvalidateOnAnimation()
     }
     return true
   }
-
-  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-    scope.launch {
-      synchronized(this) {
-        document?.let {
-          val size = layoutDocument(it, transform(width))
-          listener?.invoke(size[0], size[1])
-          postInvalidateOnAnimation()
-        }
-      }
-    }
-  }
-
-  override fun onDraw(canvas: Canvas) {
-    if (width > 0 && height > 0 && document != null) {
-      canvas.scale(density, density)
-      synchronized(this) { renderDocument(document!!, canvas, transform(width), transform(height)) }
-    }
-  }
-
-  private fun transform(size: Int): Int = (size / density).toInt()
-
-  private external fun deleteDocument(document: Long)
-  private external fun layoutDocument(document: Long, maxWith: Int): IntArray
-  private external fun touchDocument(document: Long, type: Int, x: Int, y: Int)
-  private external fun renderDocument(document: Long, canvas: Canvas, width: Int, height: Int)
-  private external fun createDocument(nativeCall: LiteHtmlNativeCall, html: String, userStyles: String): Long
 
   override fun requestLayout() {
     super.requestLayout()
@@ -102,9 +97,22 @@ class LitehtmlView(context: Context) : View(context) {
     }
   }
 
-  companion object {
-    val scope = CoroutineScope(Dispatchers.Main.limitedParallelism(3))
+  override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+    layoutDocument()
+  }
 
+  override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+    layoutDocument()
+  }
+
+  override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+    return true
+  }
+
+  override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+  }
+
+  companion object {
     init {
       System.loadLibrary("react-native-litehtml")
     }

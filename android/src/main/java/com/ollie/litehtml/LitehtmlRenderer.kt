@@ -1,6 +1,5 @@
 package com.ollie.litehtml
 
-import android.content.Context
 import android.graphics.Canvas
 import android.graphics.CornerPathEffect
 import android.graphics.Paint
@@ -8,42 +7,31 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
-import androidx.core.graphics.toRectF
-import kotlin.math.absoluteValue
-import kotlin.math.max
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withClip
 import kotlin.math.ceil
+import kotlin.math.max
 
-
-class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
+class LitehtmlRenderer(private val imageManager: ImageManager) {
   private var fontId = 1
   private var clips = mutableListOf<Path>()
-  private val imageManager = ImageManager(context)
   private val fontMap = mutableMapOf<Int, FontInfo>()
 
+  var renderListener: (() -> Unit)? = null
   var imageClickListener: ((src: String, width: Int, height: Int) -> Unit)? = null
   var anchorClickListener: ((href: String, content: String?) -> Unit)? = null
-
-  fun callImageClick(src: String, width: Int, height: Int) {
-    imageClickListener?.invoke(src, width, height)
-  }
-
-  fun callAnchorClick(href: String, content: String?) {
-    anchorClickListener?.invoke(href, content)
-  }
 
   /**
    * This function is used by the C++ layer to obtain text measurement information.
    * @param fontName The font name, if null it means system font
    * @param info Font information
-   * @return Returns an IntArray of 5 elements { id, height, ascent, descent, x_height, 0_height }
+   * @return Returns an FloatArray of 5 elements { id, height, ascent, descent, x_height, 0_width}
    */
-  fun createFont(fontName: String?, info: FontInfo): IntArray {
+  fun createFont(fontName: String?, info: FontInfo): FloatArray {
     // Create Paint for the current font
     info.paint.apply {
       isAntiAlias = true
-      textSize = info.size.toFloat()
+      textSize = info.size
       // Underline
       isUnderlineText =
         (info.decorationLine and FontInfo.TextDecorationUnderline) != 0 && info.decorationStyle == FontInfo.TextDecorationStyleSolid
@@ -59,18 +47,19 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
         )
       )
     }
-    return IntArray(7).apply {
+    return FloatArray(6).apply {
+      val id = fontId++
       info.paint.getFontMetricsInt().let {
         val emphasisSpace = emphasisDescent(info)
-        this[0] = fontId++
-        this[1] = it.ascent.absoluteValue + it.descent.absoluteValue + it.leading + emphasisSpace
-        this[2] = it.ascent
+        this[0] = id.toFloat()
+        this[1] = it.descent - it.ascent + emphasisSpace
+        this[2] = -it.ascent.toFloat()
         // Extra bottom space for emphasis characters
         this[3] = it.descent + emphasisSpace
-        this[4] = Rect().apply { info.paint.getTextBounds("x", 0, 1, this) }.height()
-        this[5] = Rect().apply { info.paint.getTextBounds("0", 0, 1, this) }.height()
+        this[4] = Rect().apply { info.paint.getTextBounds("x", 0, 1, this) }.height().toFloat()
+        this[5] = Rect().apply { info.paint.getTextBounds("0", 0, 1, this) }.width().toFloat()
       }
-      fontMap[this[0]] = info
+      fontMap[id] = info
     }
   }
 
@@ -89,7 +78,7 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
   /**
    * Load an image
    */
-  fun loadImage(url: String) = imageManager.loadImage(url, relayout)
+  fun loadImage(url: String) = imageManager.loadImage(url)
 
   /**
    * Get image size
@@ -99,16 +88,16 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
   /**
    * Draw background color
    */
-  fun drawBackgroundColor(canvas: Canvas, rect: Rect, color: String, borderRadius: FloatArray) = transform(canvas) {
+  fun drawBackgroundColor(canvas: Canvas, rect: RectF, color: String, borderRadius: FloatArray) = transform(canvas) {
     val paint = Paint().apply {
       strokeWidth = 0f
       isAntiAlias = true
       style = Paint.Style.FILL
-      setColor("#$color".toColorInt())
+      setColor(color.toColorInt())
     }
     // Check if there are rounded corners
     if (borderRadius.max() > 0) {
-      canvas.drawPath(Path().apply { addRoundRect(rect.toRectF(), borderRadius, Path.Direction.CW) }, paint)
+      canvas.drawPath(Path().apply { addRoundRect(rect, borderRadius, Path.Direction.CW) }, paint)
     } else {
       canvas.drawRect(rect, paint)
     }
@@ -120,7 +109,7 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
   fun drawText(canvas: Canvas, rect: RectF, color: String, fontId: Int, text: String) = transform(canvas) {
     fontMap[fontId]?.let {
       val emphasisSpace = emphasisDescent(it)
-      val paint = Paint(it.paint).apply { setColor("#$color".toColorInt()) }
+      val paint = Paint(it.paint).apply { setColor(color.toColorInt()) }
       val baseline = rect.bottom - paint.fontMetricsInt.descent - emphasisSpace
       canvas.drawText(text, rect.left, baseline, paint)
 
@@ -154,7 +143,7 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
         paint.pathEffect = null
       }
       // Draw emphasis dots
-      if (it.emphasis == FontInfo.TextEmphasisFilled) {
+      if (it.emphasis == FontInfo.TextEmphasisFilled || it.emphasis == FontInfo.TextEmphasisDot) {
         paint.strokeWidth = 0f
         paint.style = Paint.Style.FILL
         var x = rect.left
@@ -174,11 +163,11 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
    * Draw list marker (e.g., ul)
    * @param type Marker type. 0: Circle; 1: Square; 2: Hollow circle;
    */
-  fun drawListMarker(canvas: Canvas, rect: Rect, color: String, type: Int) = transform(canvas) {
-    val pColor = "#$color".toColorInt()
+  fun drawListMarker(canvas: Canvas, rect: RectF, color: String, type: Int) = transform(canvas) {
+    val pColor = color.toColorInt()
     when (type) {
       0 -> {
-        canvas.drawCircle(rect.centerX().toFloat(), rect.centerY().toFloat(), rect.width() / 2f, Paint().apply {
+        canvas.drawCircle(rect.centerX(), rect.centerY(), rect.width() / 2f, Paint().apply {
           setColor(pColor)
           strokeWidth = 0f
           style = Paint.Style.FILL
@@ -194,7 +183,7 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
       }
 
       2 -> {
-        canvas.drawCircle(rect.centerX().toFloat(), rect.centerY().toFloat(), rect.width() / 2f, Paint().apply {
+        canvas.drawCircle(rect.centerX(), rect.centerY(), rect.width() / 2f, Paint().apply {
           setColor(pColor)
           strokeWidth = 1f
           style = Paint.Style.STROKE
@@ -206,8 +195,8 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
   /**
    * Draw an image
    */
-  fun drawImage(canvas: Canvas, rect: Rect, url: String, borderRadius: FloatArray) = transform(canvas) {
-    imageManager.drawImage(canvas, rect.toRectF(), url, borderRadius)
+  fun drawImage(canvas: Canvas, rect: RectF, url: String, borderRadius: FloatArray) = transform(canvas) {
+    imageManager.drawImage(canvas, rect, url, borderRadius)
   }
 
   /**
@@ -240,14 +229,33 @@ class LiteHtmlNativeCall(context: Context, private val relayout: () -> Unit) {
   fun release() {
     clips.clear()
     fontMap.clear()
-    imageManager.release()
+  }
+
+  fun callImageClick(src: String, width: Int, height: Int) {
+    imageClickListener?.invoke(src, width, height)
+  }
+
+  fun callAnchorClick(href: String, content: String?) {
+    anchorClickListener?.invoke(href, content)
+  }
+
+  fun callRender() {
+    renderListener?.invoke()
   }
 
   private fun transform(canvas: Canvas, runnable: () -> Unit) {
     clips.lastOrNull()?.let { canvas.withClip(it) { runnable.invoke() } } ?: runnable.invoke()
   }
 
-  private fun emphasisDescent(info: FontInfo) = if (info.emphasis == "filled") (info.size * 0.5f).toInt() else 0
+  private fun emphasisDescent(info: FontInfo) =
+    if (info.emphasis == "filled" || info.emphasis == "dot") (info.size * 0.5f) else 0f
+
+
+  external fun deleteDocument(document: Long)
+  external fun createDocument(html: String, userStyles: String): Long
+  external fun layoutDocument(document: Long, maxWith: Float): FloatArray
+  external fun touchDocument(document: Long, type: Int, x: Float, y: Float)
+  external fun renderDocument(document: Long, canvas: Canvas, width: Float, height: Float)
 
   companion object {
     val fontRegistry = mutableMapOf<String, Lazy<Typeface>>()

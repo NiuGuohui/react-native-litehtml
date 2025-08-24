@@ -12,6 +12,7 @@ import com.facebook.react.viewmanagers.LitehtmlViewManagerInterface
 import com.ollie.litehtml.events.OnAnchorClickEvent
 import com.ollie.litehtml.events.OnImageClickEvent
 import com.ollie.litehtml.events.OnLayoutEvent
+import com.ollie.litehtml.events.OnLoadSVGEvent
 
 @ReactModule(name = LitehtmlViewManager.NAME)
 class LitehtmlViewManager : SimpleViewManager<LitehtmlView>(), LitehtmlViewManagerInterface<LitehtmlView> {
@@ -25,13 +26,16 @@ class LitehtmlViewManager : SimpleViewManager<LitehtmlView>(), LitehtmlViewManag
   override fun addEventEmitters(reactContext: ThemedReactContext, view: LitehtmlView) {
     super.addEventEmitters(reactContext, view)
     val dispatcher = { UIManagerHelper.getEventDispatcherForReactTag(reactContext, view.id) }
-    view.setOnLayoutListener { width, height ->
+    view.layoutListener = { width, height ->
       dispatcher()?.dispatchEvent(OnLayoutEvent(width, height, reactContext.surfaceId, view.id))
     }
-    view.imageClickListener = { src, width, height ->
+    view.imageManager.loadSVGListener = { src ->
+      dispatcher()?.dispatchEvent(OnLoadSVGEvent(src, reactContext.surfaceId, view.id))
+    }
+    view.renderer.imageClickListener = { src, width, height ->
       dispatcher()?.dispatchEvent(OnImageClickEvent(src, width, height, reactContext.surfaceId, view.id))
     }
-    view.anchorClickListener = { href, content ->
+    view.renderer.anchorClickListener = { href, content ->
       dispatcher()?.dispatchEvent(OnAnchorClickEvent(href, content, reactContext.surfaceId, view.id))
     }
   }
@@ -39,13 +43,19 @@ class LitehtmlViewManager : SimpleViewManager<LitehtmlView>(), LitehtmlViewManag
   @ReactProp(name = "content")
   override fun setContent(view: LitehtmlView, content: ReadableMap?) {
     content?.let {
-      val css = it.getString("css") ?: ""
-      it.getString("html")?.let { html -> view.setHTML(html, css) }
+      it.getString("html")?.let { html ->
+        view.setHTML(html, it.getString("css") ?: "")
+      }
     }
+  }
+
+  override fun svgLoaded(view: LitehtmlView, src: String, svgContent: String) {
+    view.imageManager.svgLoaded(src, svgContent)
   }
 
   override fun getExportedCustomDirectEventTypeConstants() = mapOf(
     OnLayoutEvent.NAME to mapOf("registrationName" to OnLayoutEvent.NAME),
+    OnLoadSVGEvent.NAME to mapOf("registrationName" to OnLoadSVGEvent.NAME),
     OnImageClickEvent.NAME to mapOf("registrationName" to OnImageClickEvent.NAME),
     OnAnchorClickEvent.NAME to mapOf("registrationName" to OnAnchorClickEvent.NAME),
   )

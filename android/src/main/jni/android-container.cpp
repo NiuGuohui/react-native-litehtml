@@ -17,7 +17,7 @@ android_container::~android_container() = default;
  */
 litehtml::uint_ptr
 android_container::create_font(const font_description &descr, const document *doc, litehtml::font_metrics *fm) {
-    auto result = new int[6]{0, 0, 0, 0, 0, 0};
+    auto result = new float[6]{0, 0, 0, 0, 0, 0};
     // Call jni to create font
     jniNativeCall->createFont(
             strcmp(descr.family.c_str(), DEFAULT_FONT_NAME) == 0 ? nullptr : descr.family.c_str(),
@@ -31,7 +31,7 @@ android_container::create_font(const font_description &descr, const document *do
     fm->ch_width = result[5];
     fm->super_shift = descr.size / 3;
     fm->sub_shift = descr.size / 3;
-    return litehtml::uint_ptr(result[0]);
+    return litehtml::uint_ptr(static_cast<int>(result[0]));
 }
 
 /**
@@ -46,7 +46,7 @@ void android_container::delete_font(litehtml::uint_ptr hFont) {
  * Returns the width of the specified text content
  * @param hFont Font Identifier
  */
-int android_container::text_width(const char *text, litehtml::uint_ptr hFont) {
+pixel_t android_container::text_width(const char *text, litehtml::uint_ptr hFont) {
     return jniNativeCall->textWidth(text, static_cast<int>(hFont));
 }
 
@@ -64,7 +64,7 @@ void android_container::draw_text(litehtml::uint_ptr hdc, const char *text, lite
     auto fontName = static_cast<int>(hFont);
     jniNativeCall->drawText(
             jCanvas,
-            createJRectF(jniNativeCall->env, (float) pos.x, (float) pos.y, (float) pos.width, (float) pos.height),
+            createJRectF(jniNativeCall->env, pos.x, pos.y, pos.width, pos.height),
             createJColorString(jniNativeCall->env, color),
             fontName,
             text
@@ -79,14 +79,14 @@ void android_container::split_text(const char *text, const std::function<void(co
     litehtml::document_container::split_text(text, on_word, on_space);
 }
 
-int android_container::pt_to_px(int pt) const {
+pixel_t android_container::pt_to_px(pixel_t pt) const {
     // 1pt = 1.333px
     // At this stage, most browsers will simulate the DPI of web pages to 96, so 1pt is basically a constant here.
-    return round_f(1.333f * (float) pt);
+    return 1.333f * pt;
 }
 
-int android_container::get_default_font_size() const {
-    return 16;
+pixel_t android_container::get_default_font_size() const {
+    return 16.0;
 }
 
 const char *android_container::get_default_font_name() const {
@@ -102,8 +102,8 @@ const char *android_container::get_default_font_name() const {
 void
 android_container::draw_solid_fill(litehtml::uint_ptr hdc, const background_layer &layer, const web_color &color) {
     auto jCanvas = reinterpret_cast<jobject>(hdc);
-    auto jRect = createJRect(jniNativeCall->env,
-                             layer.clip_box.x, layer.clip_box.y, layer.clip_box.width, layer.clip_box.height);
+    auto jRect = createJRectF(jniNativeCall->env,
+                              layer.clip_box.x, layer.clip_box.y, layer.clip_box.width, layer.clip_box.height);
     auto jBorderRadius = createJFloatArray(jniNativeCall->env,
                                            {
                                                    (float) layer.border_radius.top_left_x,
@@ -132,7 +132,7 @@ void android_container::draw_list_marker(litehtml::uint_ptr hdc, const litehtml:
     else return;
     jniNativeCall->drawListMarker(
             jCanvas,
-            createJRect(jniNativeCall->env, marker.pos.x, marker.pos.y, marker.pos.width, marker.pos.height),
+            createJRectF(jniNativeCall->env, marker.pos.x, marker.pos.y, marker.pos.width, marker.pos.height),
             createJColorString(jniNativeCall->env, marker.color),
             type
     );
@@ -152,8 +152,8 @@ void android_container::get_image_size(const char *src, const char *baseurl, lit
     int size[2] = {0, 0};
     jniNativeCall->getImageSize(src, size);
     if (size[0] > 0 && size[1] > 0) {
-        sz.width = size[0];
-        sz.height = size[1];
+        sz.width = static_cast<float>(size[0]);
+        sz.height = static_cast<float>(size[1]);
     }
 }
 
@@ -166,8 +166,8 @@ void android_container::draw_image(litehtml::uint_ptr hdc, const background_laye
     jniNativeCall->drawImage(
             jCanvas,
             url.c_str(),
-            createJRect(jniNativeCall->env, layer.clip_box.x, layer.clip_box.y, layer.clip_box.width,
-                        layer.clip_box.height),
+            createJRectF(jniNativeCall->env, layer.clip_box.x, layer.clip_box.y, layer.clip_box.width,
+                         layer.clip_box.height),
             createJFloatArray(jniNativeCall->env,
                               {
                                       (float) layer.border_radius.top_left_x,
@@ -287,7 +287,7 @@ void android_container::get_media_features(litehtml::media_features &media) cons
 bool android_container::on_element_click(const litehtml::element::ptr &el) {
     if (el && string(el->get_tagName()) == "img" || string(el->get_tagName()) == "image") {
         auto sz = el->get_placement();
-        jniNativeCall->callImageClick(el->get_attr("src", ""), sz.width, sz.height);
+        jniNativeCall->callImageClick(el->get_attr("src", ""), static_cast<int>(sz.width), static_cast<int>(sz.height));
         return true;
     }
     return false;

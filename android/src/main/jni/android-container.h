@@ -20,14 +20,14 @@ public:
 
     void delete_font(litehtml::uint_ptr hFont) override;
 
-    int text_width(const char *text, litehtml::uint_ptr hFont) override;
+    pixel_t text_width(const char *text, litehtml::uint_ptr hFont) override;
 
     void draw_text(litehtml::uint_ptr hdc, const char *text, litehtml::uint_ptr hFont, litehtml::web_color color,
                    const litehtml::position &pos) override;
 
-    [[nodiscard]] int pt_to_px(int pt) const override;
+    [[nodiscard]] pixel_t pt_to_px(pixel_t pt) const override;
 
-    [[nodiscard]] int get_default_font_size() const override;
+    [[nodiscard]] pixel_t get_default_font_size() const override;
 
     [[nodiscard]] const char *get_default_font_name() const override;
 

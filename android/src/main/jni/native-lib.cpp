@@ -17,11 +17,11 @@ document::ptr getDocument(jlong address) {
  * Create a document object
  */
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_ollie_litehtml_LitehtmlView_createDocument(JNIEnv *env, jobject view, jobject nativeCall,
-                                                    jstring html, jstring user_styles) {
+Java_com_ollie_litehtml_LitehtmlRenderer_createDocument(JNIEnv *env, jobject renderer, jstring html,
+                                                        jstring user_styles) {
     auto htmlStr = env->GetStringUTFChars(html, nullptr);
     auto userStylesStr = env->GetStringUTFChars(user_styles, nullptr);
-    auto container = new android_container(new JniNativeCall(env, nativeCall));
+    auto container = new android_container(new JniNativeCall(env, renderer));
     auto doc = document::createFromString(htmlStr, container, master_css, userStylesStr);
     return reinterpret_cast<jlong>(new document::ptr(doc));
 }
@@ -29,12 +29,11 @@ Java_com_ollie_litehtml_LitehtmlView_createDocument(JNIEnv *env, jobject view, j
 /**
  * Layout document object
  */
-extern "C" JNIEXPORT jintArray JNICALL
-Java_com_ollie_litehtml_LitehtmlView_layoutDocument(JNIEnv *env, jobject view, jlong document, jint width) {
-    auto max_width = reinterpret_cast<int>(width);
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_ollie_litehtml_LitehtmlRenderer_layoutDocument(JNIEnv *env, jobject, jlong document, jfloat width) {
     auto doc = getDocument(document);
-    doc->render(max_width);
-    auto result = createJIntArray(env, {doc->width(), doc->height()});
+    doc->render(width);
+    auto result = createJFloatArray(env, {doc->width(), doc->height()});
     return result;
 }
 
@@ -42,18 +41,17 @@ Java_com_ollie_litehtml_LitehtmlView_layoutDocument(JNIEnv *env, jobject view, j
  * Draw document object
  */
 extern "C" JNIEXPORT void JNICALL
-Java_com_ollie_litehtml_LitehtmlView_renderDocument(JNIEnv *env, jobject view, jlong document, jobject canvas,
-                                                    jint width, jint height) {
+Java_com_ollie_litehtml_LitehtmlRenderer_renderDocument(JNIEnv *env, jobject, jlong document, jobject canvas,
+                                                        jfloat width, jfloat height) {
     auto doc = getDocument(document);
-    doc->draw(reinterpret_cast<uint_ptr>(canvas), 0, 0,
-              new position(0, 0, reinterpret_cast<int>(width), reinterpret_cast<int>(height)));
+    doc->draw(reinterpret_cast<uint_ptr>(canvas), 0, 0, new position(0, 0, width, height));
 }
 
 /**
  * Delete document object
  */
 extern "C" JNIEXPORT void JNICALL
-Java_com_ollie_litehtml_LitehtmlView_deleteDocument(JNIEnv *env, jobject view, jlong address) {
+Java_com_ollie_litehtml_LitehtmlRenderer_deleteDocument(JNIEnv *env, jobject, jlong address) {
     assert(address != 0x0);
     delete reinterpret_cast<document::ptr *>(address);
 }
@@ -63,8 +61,8 @@ Java_com_ollie_litehtml_LitehtmlView_deleteDocument(JNIEnv *env, jobject view, j
  */
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_ollie_litehtml_LitehtmlView_touchDocument(JNIEnv *env, jobject view, jlong document,
-                                                   jint type, jint x, jint y) {
+Java_com_ollie_litehtml_LitehtmlRenderer_touchDocument(JNIEnv *env, jobject renderer, jlong document,
+                                                       jint type, jfloat x, jfloat y) {
     auto s = std::vector<position>();
     auto doc = getDocument(document);
     auto a = false;
@@ -81,7 +79,7 @@ Java_com_ollie_litehtml_LitehtmlView_touchDocument(JNIEnv *env, jobject view, jl
             break;
     }
     if (a && !s.empty()) {
-        auto method = env->GetMethodID(env->GetObjectClass(view), "postInvalidateOnAnimation", "()V");
-        env->CallVoidMethod(view, method);
+        auto method = env->GetMethodID(env->GetObjectClass(renderer), "callRender", "()V");
+        env->CallVoidMethod(renderer, method);
     }
 }

@@ -17,11 +17,11 @@ public:
     ~JniNativeCall();
 
     void
-    createFont(const char *fontName, const litehtml::font_description &descr, int result[]) const;
+    createFont(const char *fontName, const litehtml::font_description &descr, float result[]) const;
 
     void deleteFont(int hFont) const;
 
-    int textWidth(const char *text, int hFont) const;
+    float textWidth(const char *text, int hFont) const;
 
     void
     drawBackground(jobject canvas, jobject box, jfloatArray borderRadiuses, jstring argb) const;

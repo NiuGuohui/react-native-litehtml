@@ -1,9 +1,9 @@
 #import "LitehtmlView.h"
 
-#import "generated/RNLitehtmlViewSpec/ComponentDescriptors.h"
-#import "generated/RNLitehtmlViewSpec/EventEmitters.h"
-#import "generated/RNLitehtmlViewSpec/Props.h"
-#import "generated/RNLitehtmlViewSpec/RCTComponentViewHelpers.h"
+#import <react/renderer/components/LitehtmlViewSpec/ComponentDescriptors.h>
+#import <react/renderer/components/LitehtmlViewSpec/EventEmitters.h>
+#import <react/renderer/components/LitehtmlViewSpec/Props.h>
+#import <react/renderer/components/LitehtmlViewSpec/RCTComponentViewHelpers.h>
 
 #import "RCTFabricComponentsPlugins.h"
 

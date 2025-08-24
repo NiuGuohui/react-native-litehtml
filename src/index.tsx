@@ -1,6 +1,6 @@
-import { default as NativeLitehtmlView, type NativeLitehtmlViewProps } from './LitehtmlViewNativeComponent';
-import { StyleSheet, type ViewProps } from 'react-native';
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { default as NativeLitehtmlView, Commands, type NativeLitehtmlViewProps } from './LitehtmlViewNativeComponent';
+import { type NativeSyntheticEvent, StyleSheet, type ViewProps } from 'react-native';
+import { useCallback, useMemo, useRef } from 'react';
 export { NativeLitehtml } from './NativeLitehtml';
 
 export interface LitehtmlViewProps extends ViewProps, Pick<NativeLitehtmlViewProps, 'onAnchorClick' | 'onImageClick'> {
@@ -12,6 +12,14 @@ export interface LitehtmlViewProps extends ViewProps, Pick<NativeLitehtmlViewPro
    * css string
    */
   css?: string;
+  /**
+   * Triggered when the html layout
+   */
+  onContentLayout?: (width: number, height: number) => void;
+  /**
+   * Load svg content.
+   */
+  onLoadSVG?: (src: string) => Promise<string>;
 }
 
 /**
@@ -19,15 +27,28 @@ export interface LitehtmlViewProps extends ViewProps, Pick<NativeLitehtmlViewPro
  * It will be auto height and full width if you don't set width/height style.
  */
 export function LitehtmlView(props: LitehtmlViewProps) {
-  const [height, setHeight] = useState(0);
+  const ref = useRef<any>(null);
+  const { html, css, onContentLayout, onLoadSVG } = props;
 
   return (
     <NativeLitehtmlView
       {...props}
+      ref={ref as any}
       collapsable={false}
-      onHtmlLayout={useCallback((e: any) => setHeight(e.nativeEvent.height), [])}
-      content={useMemo(() => ({ html: props.html, css: props.css }), [props.html, props.css])}
-      style={StyleSheet.compose({ width: '100%', height: useDeferredValue(height, 0) }, props.style)}
+      content={useMemo(() => ({ html, css }), [html, css])}
+      style={StyleSheet.compose({ width: '100%' }, props.style)}
+      onHtmlLayout={useCallback(
+        (e: NativeSyntheticEvent<{ width: number; height: number }>) =>
+          onContentLayout?.(e.nativeEvent.width, e.nativeEvent.height),
+        [onContentLayout]
+      )}
+      onLoadSVG={useCallback(
+        (e: NativeSyntheticEvent<{ src: string }>) => {
+          const src = e.nativeEvent.src;
+          onLoadSVG?.(src)?.then((content) => Commands.svgLoaded(ref.current, src, content));
+        },
+        [onLoadSVG]
+      )}
     />
   );
 }

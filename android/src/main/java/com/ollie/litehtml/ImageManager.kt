@@ -1,16 +1,11 @@
 package com.ollie.litehtml
 
-import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
 import android.graphics.RectF
-import android.util.Log
-import androidx.core.graphics.toRectF
 import androidx.core.graphics.withClip
 import androidx.core.net.toUri
 import com.caverock.androidsvg.PreserveAspectRatio
@@ -24,59 +19,35 @@ import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.imagepipeline.image.CloseableBitmap
 import com.facebook.imagepipeline.image.CloseableImage
 import com.facebook.imagepipeline.request.ImageRequestBuilder
-import com.facebook.react.modules.network.OkHttpClientProvider
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.Request
-import okhttp3.Response
-import java.io.IOException
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 
-class ImageManager(private val context: Context) {
+class ImageManager(private val imgLoaded: () -> Unit) {
   private val cacheSvgs = HashMap<String, SVG>()
   private val cache = HashMap<String, CloseableReference<CloseableImage>>()
 
-  fun loadImage(url: String, relayout: () -> Unit) {
-    if (isSvgImage(url)) {
-      val request: Request = Request.Builder().url(url).build()
-      OkHttpClientProvider.createClient(context).newCall(request).enqueue(object : Callback {
-        override fun onResponse(call: Call, response: Response) {
-          if (response.isSuccessful) {
-            response.body?.byteStream()?.also {
-              try {
-                cacheSvgs[url] = SVG.getFromInputStream(it)
-              } catch (e: Exception) {
-                Log.e("ImageManager", "Error loading SVG: $url", e)
-              } finally {
-                relayout()
-              }
-            }
-          }
-        }
+  var loadSVGListener: ((src: String) -> Unit)? = null
 
-        override fun onFailure(call: Call, e: IOException) {
-        }
-      })
-    } else {
+  fun loadImage(url: String) {
+    if (isSvgImage(url)) loadSVGListener?.invoke(url)
+    else {
       Fresco.getImagePipeline().fetchDecodedImage(ImageRequestBuilder.newBuilderWithSource(url.toUri()).build(), null)
         .subscribe(object : BaseDataSubscriber<CloseableReference<CloseableImage>>() {
           override fun onNewResultImpl(dataSource: DataSource<CloseableReference<CloseableImage>>) {
             val result = dataSource.result
             if (dataSource.isFinished && dataSource.hasResult() && result != null) {
-              relayout()
+              imgLoaded.invoke()
               cache[url] = result
             }
           }
 
           override fun onFailureImpl(dataSource: DataSource<CloseableReference<CloseableImage>>) {
-            relayout()
+            imgLoaded.invoke()
           }
         }, UiThreadImmediateExecutorService.getInstance())
     }
   }
-
 
   fun getImageSize(url: String): IntArray {
     if (isSvgImage(url)) {
@@ -122,12 +93,17 @@ class ImageManager(private val context: Context) {
     }
   }
 
+  fun svgLoaded(src: String, svgContent: String) {
+    cacheSvgs[src] = SVG.getFromString(svgContent)
+    imgLoaded.invoke()
+  }
+
   fun release() {
     cache.forEach { it.value.close() }
     cache.clear()
     cacheSvgs.clear()
+    loadSVGListener = null
   }
-
 
   private fun isSvgImage(url: String) = url.toUri().path?.contains(".svg") ?: false
 }

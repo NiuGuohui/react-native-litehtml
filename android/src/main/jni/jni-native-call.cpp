@@ -2,9 +2,7 @@
 #include "jni-native-call.h"
 #include "android-util.h"
 
-#define NATIVE_CALL_JAVA_CLASS "com/ollie/litehtml/LiteHtmlNativeCall"
-#define FONT_INFO_JAVA_CLASS "com/ollie/litehtml/FontInfo"
-
+#define NATIVE_CALL_JAVA_CLASS "com/ollie/litehtml/LitehtmlRenderer"
 
 JniNativeCall::JniNativeCall(JNIEnv *env, jobject nativeCall) {
     this->env = env;
@@ -17,28 +15,28 @@ JniNativeCall::~JniNativeCall() {
 }
 
 void
-JniNativeCall::createFont(const char *fontName, const litehtml::font_description &descr, int result[]) const {
-    jclass jInfoClass = env->FindClass(FONT_INFO_JAVA_CLASS);
+JniNativeCall::createFont(const char *fontName, const litehtml::font_description &descr, float result[]) const {
+    jclass jInfoClass = env->FindClass("com/ollie/litehtml/FontInfo");
     jmethodID jInfoConstructor = env->GetMethodID(jInfoClass, "<init>",
-                                                  "(IIZIILjava/lang/String;Ljava/lang/String;)V");
+                                                  "(FIZIILjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
     jobject jInfo = env->NewObject(jInfoClass, jInfoConstructor, descr.size, descr.weight,
                                    static_cast<bool>(descr.style == litehtml::font_style::font_style_italic),
                                    static_cast<int>(descr.decoration_line),
                                    static_cast<int>(descr.decoration_style),
-                                   env->NewStringUTF(descr.decoration_color.to_string().c_str()),
-                                   descr.emphasis_style.empty() ? nullptr :
-                                   env->NewStringUTF(descr.emphasis_style.c_str()));
-
-    auto methodName = std::string("(Ljava/lang/String;L") + FONT_INFO_JAVA_CLASS + ";)[I";
-
-    auto jResult = (jintArray) env->CallObjectMethod(
-            nativeCall,
-            env->GetMethodID(nativeCallClass, "createFont", methodName.c_str()),
-            fontName ? env->NewStringUTF(fontName) : nullptr, jInfo
+                                   createJColorString(env, descr.decoration_color),
+                                   descr.emphasis_style.empty() ? nullptr : env->NewStringUTF(
+                                           descr.emphasis_style.c_str()),
+                                   createJColorString(env, descr.decoration_color)
     );
-    auto l = env->GetIntArrayElements(jResult, nullptr);
-    for (int i = 0; i < 5; ++i) result[i] = l[i];
-    env->ReleaseIntArrayElements(jResult, l, 0);
+    auto jResult = (jfloatArray) env->CallObjectMethod(
+            nativeCall,
+            env->GetMethodID(nativeCallClass, "createFont", "(Ljava/lang/String;Lcom/ollie/litehtml/FontInfo;)[F"),
+            fontName ? env->NewStringUTF(fontName) : nullptr,
+            jInfo
+    );
+    auto l = env->GetFloatArrayElements(jResult, nullptr);
+    for (int i = 0; i < 6; ++i) result[i] = l[i];
+    env->ReleaseFloatArrayElements(jResult, l, 0);
     env->DeleteLocalRef(jResult);
 }
 
@@ -47,21 +45,21 @@ void JniNativeCall::deleteFont(int hFont) const {
                         hFont);
 }
 
-int JniNativeCall::textWidth(const char *text, int hFont) const {
+float JniNativeCall::textWidth(const char *text, int hFont) const {
     auto jW = env->CallFloatMethod(nativeCall,
                                    env->GetMethodID(nativeCallClass, "measureTextWidth",
                                                     "(ILjava/lang/String;)F"),
                                    hFont,
                                    env->NewStringUTF(text)
     );
-    return static_cast<int>(std::round(jW));
+    return static_cast<float>(jW);
 }
 
 void
 JniNativeCall::drawBackground(jobject canvas, jobject box, jfloatArray borderRadiuses, jstring argb) const {
     env->CallVoidMethod(nativeCall,
                         env->GetMethodID(nativeCallClass, "drawBackgroundColor",
-                                         "(Landroid/graphics/Canvas;Landroid/graphics/Rect;Ljava/lang/String;[F)V"),
+                                         "(Landroid/graphics/Canvas;Landroid/graphics/RectF;Ljava/lang/String;[F)V"),
                         canvas, box, argb, borderRadiuses);
 }
 
@@ -78,7 +76,7 @@ JniNativeCall::drawText(jobject canvas, jobject box, jstring argb, int font, con
 void JniNativeCall::drawListMarker(jobject canvas, jobject box, jstring argb, int type) const {
     env->CallVoidMethod(nativeCall,
                         env->GetMethodID(nativeCallClass, "drawListMarker",
-                                         "(Landroid/graphics/Canvas;Landroid/graphics/Rect;Ljava/lang/String;I)V"),
+                                         "(Landroid/graphics/Canvas;Landroid/graphics/RectF;Ljava/lang/String;I)V"),
                         canvas, box, argb, type);
 }
 
@@ -102,7 +100,7 @@ void JniNativeCall::drawImage(jobject canvas, const char *url, jobject box, jflo
     env->CallVoidMethod(
             nativeCall,
             env->GetMethodID(nativeCallClass, "drawImage",
-                             "(Landroid/graphics/Canvas;Landroid/graphics/Rect;Ljava/lang/String;[F)V"),
+                             "(Landroid/graphics/Canvas;Landroid/graphics/RectF;Ljava/lang/String;[F)V"),
             canvas, box, env->NewStringUTF(url), borderRadiuses
     );
 }
