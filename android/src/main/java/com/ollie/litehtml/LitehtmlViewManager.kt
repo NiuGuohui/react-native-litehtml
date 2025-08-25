@@ -7,6 +7,7 @@ import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.ViewManagerDelegate
 import com.facebook.react.uimanager.annotations.ReactProp
+import com.facebook.react.uimanager.events.Event
 import com.facebook.react.viewmanagers.LitehtmlViewManagerDelegate
 import com.facebook.react.viewmanagers.LitehtmlViewManagerInterface
 import com.ollie.litehtml.events.OnAnchorClickEvent
@@ -25,18 +26,22 @@ class LitehtmlViewManager : SimpleViewManager<LitehtmlView>(), LitehtmlViewManag
 
   override fun addEventEmitters(reactContext: ThemedReactContext, view: LitehtmlView) {
     super.addEventEmitters(reactContext, view)
-    val dispatcher = { UIManagerHelper.getEventDispatcherForReactTag(reactContext, view.id) }
+    val dispatcher = { e: Event<*> ->
+      reactContext.runOnUiQueueThread {
+        UIManagerHelper.getEventDispatcherForReactTag(reactContext, view.id)?.dispatchEvent(e)
+      }
+    }
     view.layoutListener = { width, height ->
-      dispatcher()?.dispatchEvent(OnLayoutEvent(width, height, reactContext.surfaceId, view.id))
+      dispatcher(OnLayoutEvent(width, height, reactContext.surfaceId, view.id))
     }
     view.imageManager.loadSVGListener = { src ->
-      dispatcher()?.dispatchEvent(OnLoadSVGEvent(src, reactContext.surfaceId, view.id))
+      dispatcher(OnLoadSVGEvent(src, reactContext.surfaceId, view.id))
     }
     view.renderer.imageClickListener = { src, width, height ->
-      dispatcher()?.dispatchEvent(OnImageClickEvent(src, width, height, reactContext.surfaceId, view.id))
+      dispatcher(OnImageClickEvent(src, width, height, reactContext.surfaceId, view.id))
     }
     view.renderer.anchorClickListener = { href, content ->
-      dispatcher()?.dispatchEvent(OnAnchorClickEvent(href, content, reactContext.surfaceId, view.id))
+      dispatcher(OnAnchorClickEvent(href, content, reactContext.surfaceId, view.id))
     }
   }
 

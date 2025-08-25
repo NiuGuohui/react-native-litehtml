@@ -7,6 +7,7 @@ import com.facebook.react.uimanager.events.Event
 
 class OnLoadSVGEvent(private val src: String, surfaceId: Int, viewId: Int) : Event<OnLoadSVGEvent>(surfaceId, viewId) {
   override fun getEventName() = NAME
+  override fun canCoalesce() = false
 
   override fun getEventData(): WritableMap? {
     val data = Arguments.createMap()
