@@ -14,9 +14,7 @@ class LitehtmlView(context: Context) : View(context) {
   private var document: Long? = null
   private val scope = CoroutineScope(Dispatchers.Main)
   private val density = context.resources.displayMetrics.density
-  private var needRedraw = true
   private val rerenderRunnable = Runnable {
-    needRedraw = true
     requestLayout()
     postInvalidateOnAnimation()
   }
@@ -69,13 +67,10 @@ class LitehtmlView(context: Context) : View(context) {
   }
 
   override fun onDraw(canvas: Canvas) {
-    if (needRedraw) {
-      canvas.drawColor(Color.TRANSPARENT)
-      canvas.scale(density, density)
-      if (document != null) {
-        renderer.renderDocument(document!!, canvas, transform(width), transform(height))
-        needRedraw = false
-      }
+    canvas.drawColor(Color.TRANSPARENT)
+    canvas.scale(density, density)
+    if (document != null) {
+      renderer.renderDocument(document!!, canvas, transform(width), transform(height))
     }
   }
 
@@ -104,6 +99,7 @@ class LitehtmlView(context: Context) : View(context) {
         MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
       )
       layout(left, top, right, bottom)
+      postInvalidateOnAnimation()
     }
   }
 
