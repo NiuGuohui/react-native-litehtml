@@ -62,6 +62,7 @@ android {
 
     externalNativeBuild {
       cmake {
+        cppFlags "-Wl,-z,max-page-size=16384"
         arguments "-DANDROID_STL=c++_shared",
             "-DNODE_MODULES_DIR=${findNodeModules(projectDir)}"
       }

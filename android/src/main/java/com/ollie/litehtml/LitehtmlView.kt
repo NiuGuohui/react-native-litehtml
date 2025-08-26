@@ -15,6 +15,11 @@ class LitehtmlView(context: Context) : View(context) {
   private val scope = CoroutineScope(Dispatchers.Main)
   private val density = context.resources.displayMetrics.density
   private var needRedraw = true
+  private val rerenderRunnable = Runnable {
+    needRedraw = true
+    requestLayout()
+    postInvalidateOnAnimation()
+  }
 
   var layoutListener: ((width: Float, height: Float) -> Unit)? = null
 
@@ -38,8 +43,8 @@ class LitehtmlView(context: Context) : View(context) {
   }
 
   private fun renderDocument() {
-    needRedraw = true
-    postInvalidateOnAnimation()
+    removeCallbacks(rerenderRunnable)
+    postDelayed(rerenderRunnable, 30)
   }
 
   init {
@@ -88,7 +93,6 @@ class LitehtmlView(context: Context) : View(context) {
   }
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-    super.onSizeChanged(w, h, oldw, oldh)
     if (w > 0 && h > 0 && (w != oldw || h != oldh)) layoutDocument()
   }
 
