@@ -44,7 +44,12 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "litehtml",
+    "html",
+    "render-html",
+    "richtext",
+    "react-native-html"
   ],
   "repository": {
     "type": "git",
