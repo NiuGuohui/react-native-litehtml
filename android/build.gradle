@@ -29,7 +29,7 @@ def getExtOrIntegerDefault(name) {
 
 def reactNativeArchitectures() {
   def value = project.getProperties().get("reactNativeArchitectures")
-  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+  return value ? value.split(",") : ["armeabi-v7a", "arm64-v8a"]
 }
 
 static def findNodeModules(baseDir) {
