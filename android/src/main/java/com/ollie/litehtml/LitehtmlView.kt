@@ -1,20 +1,20 @@
 package com.ollie.litehtml
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.PorterDuff
-import android.graphics.SurfaceTexture
 import android.view.MotionEvent
-import android.view.TextureView
+import android.view.View
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 
-class LitehtmlView(context: Context) : TextureView(context), TextureView.SurfaceTextureListener {
+class LitehtmlView(context: Context) : View(context) {
   private var document: Long? = null
   private val scope = CoroutineScope(Dispatchers.Main)
   private val density = context.resources.displayMetrics.density
+  private var needRedraw = true
 
   var layoutListener: ((width: Float, height: Float) -> Unit)? = null
 
@@ -38,23 +38,13 @@ class LitehtmlView(context: Context) : TextureView(context), TextureView.Surface
   }
 
   private fun renderDocument() {
-    scope.launch {
-      synchronized(this) {
-        lockCanvas()?.let { canvas ->
-          canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-          canvas.scale(density, density)
-          if (document != null) {
-            renderer.renderDocument(document!!, canvas, transform(width), transform(height))
-          }
-          unlockCanvasAndPost(canvas)
-        }
-      }
-    }
+    needRedraw = true
+    postInvalidateOnAnimation()
   }
 
   init {
-    isOpaque = false
-    surfaceTextureListener = this
+    setBackgroundColor(Color.TRANSPARENT)
+    setLayerType(LAYER_TYPE_HARDWARE, null)
   }
 
   fun setHTML(html: String, css: String = "") {
@@ -73,6 +63,17 @@ class LitehtmlView(context: Context) : TextureView(context), TextureView.Surface
     }
   }
 
+  override fun onDraw(canvas: Canvas) {
+    if (needRedraw) {
+      canvas.drawColor(Color.TRANSPARENT)
+      canvas.scale(density, density)
+      if (document != null) {
+        renderer.renderDocument(document!!, canvas, transform(width), transform(height))
+        needRedraw = false
+      }
+    }
+  }
+
   override fun onTouchEvent(event: MotionEvent): Boolean {
     document?.let {
       val tx = transform(event.x.toInt())
@@ -86,6 +87,11 @@ class LitehtmlView(context: Context) : TextureView(context), TextureView.Surface
     return true
   }
 
+  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    super.onSizeChanged(w, h, oldw, oldh)
+    if (w > 0 && h > 0 && (w != oldw || h != oldh)) layoutDocument()
+  }
+
   override fun requestLayout() {
     super.requestLayout()
     post {
@@ -95,21 +101,6 @@ class LitehtmlView(context: Context) : TextureView(context), TextureView.Surface
       )
       layout(left, top, right, bottom)
     }
-  }
-
-  override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-    layoutDocument()
-  }
-
-  override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
-    layoutDocument()
-  }
-
-  override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-    return true
-  }
-
-  override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
   }
 
   companion object {
