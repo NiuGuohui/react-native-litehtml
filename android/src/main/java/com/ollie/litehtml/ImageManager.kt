@@ -1,11 +1,13 @@
 package com.ollie.litehtml
 
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.os.Handler
 import androidx.core.graphics.withClip
 import androidx.core.net.toUri
 import com.caverock.androidsvg.PreserveAspectRatio
@@ -20,25 +22,26 @@ import com.facebook.imagepipeline.image.CloseableBitmap
 import com.facebook.imagepipeline.image.CloseableImage
 import com.facebook.imagepipeline.request.ImageRequestBuilder
 import kotlin.math.ceil
-import kotlin.math.roundToInt
 
 
-class ImageManager(private val imgLoaded: () -> Unit) {
+class ImageManager(private val context: Context, private val imgLoaded: () -> Unit) {
   private val cacheSvgs = HashMap<String, SVG>()
   private val cache = HashMap<String, CloseableReference<CloseableImage>>()
 
   var loadSVGListener: ((src: String) -> Unit)? = null
 
   fun loadImage(url: String) {
-    if (isSvgImage(url)) loadSVGListener?.invoke(url)
-    else {
+    if (isSvgImage(url)) Handler(context.mainLooper).post {
+      if (cacheSvgs.contains(url)) imgLoaded.invoke()
+      else loadSVGListener?.invoke(url)
+    } else {
       Fresco.getImagePipeline().fetchDecodedImage(ImageRequestBuilder.newBuilderWithSource(url.toUri()).build(), null)
         .subscribe(object : BaseDataSubscriber<CloseableReference<CloseableImage>>() {
           override fun onNewResultImpl(dataSource: DataSource<CloseableReference<CloseableImage>>) {
             val result = dataSource.result
             if (dataSource.isFinished && dataSource.hasResult() && result != null) {
-              imgLoaded.invoke()
               cache[url] = result
+              imgLoaded.invoke()
             }
           }
 
@@ -51,9 +54,9 @@ class ImageManager(private val imgLoaded: () -> Unit) {
 
   fun getImageSize(url: String): IntArray {
     if (isSvgImage(url)) {
-      return cacheSvgs[url]?.let { svg ->
-        intArrayOf(ceil(svg.documentWidth).roundToInt(), ceil(svg.documentHeight).toInt())
-      } ?: intArrayOf(0, 0)
+      if (!cacheSvgs.containsKey(url)) return intArrayOf(0, 0)
+      val svg = cacheSvgs[url]!!
+      return intArrayOf(ceil(svg.documentWidth).toInt(), ceil(svg.documentHeight).toInt())
     }
     return cache[url]?.get()?.let { intArrayOf(it.width, it.height) } ?: intArrayOf(0, 0)
   }

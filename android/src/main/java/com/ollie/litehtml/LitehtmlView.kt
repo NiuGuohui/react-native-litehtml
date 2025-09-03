@@ -15,20 +15,12 @@ class LitehtmlView(context: Context) : View(context) {
   private val scope = CoroutineScope(Dispatchers.Main)
   private val density = context.resources.displayMetrics.density
   private val rerenderRunnable = Runnable {
+    if (width <= 0 || height <= 0) return@Runnable
     requestLayout()
     postInvalidateOnAnimation()
   }
-
-  var layoutListener: ((width: Float, height: Float) -> Unit)? = null
-
-  val imageManager = ImageManager { layoutDocument() }
-  val renderer = LitehtmlRenderer(imageManager).apply {
-    renderListener = { renderDocument() }
-  }
-
-  private fun transform(size: Int) = size / density
-
-  private fun layoutDocument() {
+  private val layoutRunnable = Runnable {
+    if (width <= 0) return@Runnable
     scope.launch {
       synchronized(this) {
         document?.let {
@@ -38,6 +30,19 @@ class LitehtmlView(context: Context) : View(context) {
         }
       }
     }
+  }
+
+  var layoutListener: ((width: Float, height: Float) -> Unit)? = null
+  val imageManager = ImageManager(context) { layoutDocument() }
+  val renderer = LitehtmlRenderer(imageManager).apply {
+    renderListener = { renderDocument() }
+  }
+
+  private fun transform(size: Int) = size / density
+
+  private fun layoutDocument() {
+    removeCallbacks(layoutRunnable)
+    postDelayed(layoutRunnable, 80)
   }
 
   private fun renderDocument() {
@@ -67,9 +72,9 @@ class LitehtmlView(context: Context) : View(context) {
   }
 
   override fun onDraw(canvas: Canvas) {
-    canvas.drawColor(Color.TRANSPARENT)
-    canvas.scale(density, density)
-    if (document != null) {
+    if (document != null && width > 0 && height > 0) {
+      canvas.drawColor(Color.TRANSPARENT)
+      canvas.scale(density, density)
       renderer.renderDocument(document!!, canvas, transform(width), transform(height))
     }
   }
