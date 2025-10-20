@@ -11,7 +11,7 @@ const richText = `
     <p style="text-align: left">Bold text:</p>
     <p style="text-align: left">
       <strong>Example text for bold formatting.</strong>
-      <img src="https://s.100tifen.com/media/eqn/54/8/q15408_9zyfepe4v4.svg" style="height: 40px;width: 100px;" />
+      <img src="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/pencil.svg" style="height: 1000px;width: 50px;" />
     </p>
     <p style="text-align: left">Italic text:</p>
     <p style="text-align: left">
@@ -190,6 +190,7 @@ const style = css`
 
   img {
     max-width: 100%;
+    height: auto !important;
     display: inline-block;
     vertical-align: middle;
   }
@@ -207,7 +208,19 @@ export default function App() {
             style={{ height: 3000 }}
             onLoadSVG={(src) => {
               console.log(src);
-              return fetch(src).then((res) => res.text());
+              return fetch(src).then((res) =>
+                res.text().then((text) =>
+                  text.replaceAll(/(width|height)=['"](.+?)(ex|em|px)['"]/gi, (substring) => {
+                    const s = substring.replaceAll(/width|height|=|'|"/g, '');
+                    const unit = s.match(/[a-z]+/)?.[0] ?? 'px';
+                    let value = parseFloat(s);
+                    if (unit === 'ex') value = value * (16 / 2);
+                    else if (unit === 'em') value = value * 16;
+                    if (substring.includes('height')) value *= 0.95;
+                    return substring.replace(s, value.toString());
+                  })
+                )
+              );
             }}
             onContentLayout={(width, height) => {}}
             onImageClick={(e) => {

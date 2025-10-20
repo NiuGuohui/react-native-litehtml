@@ -10,8 +10,6 @@ import android.graphics.RectF
 import android.os.Handler
 import androidx.core.graphics.withClip
 import androidx.core.net.toUri
-import com.caverock.androidsvg.PreserveAspectRatio
-import com.caverock.androidsvg.RenderOptions
 import com.caverock.androidsvg.SVG
 import com.facebook.common.executors.UiThreadImmediateExecutorService
 import com.facebook.common.references.CloseableReference
@@ -31,9 +29,11 @@ class ImageManager(private val context: Context, private val imgLoaded: () -> Un
   var loadSVGListener: ((src: String) -> Unit)? = null
 
   fun loadImage(url: String) {
-    if (isSvgImage(url)) Handler(context.mainLooper).post {
-      if (cacheSvgs.contains(url)) imgLoaded.invoke()
-      else loadSVGListener?.invoke(url)
+    if (isSvgImage(url)) {
+      Handler(context.mainLooper).post {
+        if (cacheSvgs.contains(url)) imgLoaded.invoke()
+        else loadSVGListener?.invoke(url)
+      }
     } else {
       Fresco.getImagePipeline().fetchDecodedImage(ImageRequestBuilder.newBuilderWithSource(url.toUri()).build(), null)
         .subscribe(object : BaseDataSubscriber<CloseableReference<CloseableImage>>() {
@@ -68,14 +68,7 @@ class ImageManager(private val context: Context, private val imgLoaded: () -> Un
         else addRect(rect, Path.Direction.CW)
       }
       canvas.withClip(clip) {
-        cacheSvgs[url]?.let { svg ->
-          svg.documentWidth = rect.width()
-          svg.documentHeight = rect.height()
-          svg.renderToCanvas(
-            canvas, RenderOptions().preserveAspectRatio(PreserveAspectRatio.FULLSCREEN_START).also { options ->
-              options.viewPort(rect.left, rect.top, rect.width(), rect.height())
-            })
-        }
+        cacheSvgs[url]?.let { drawPicture(it.renderToPicture(), rect) }
       }
     } else {
       cache[url]?.get()?.let {
